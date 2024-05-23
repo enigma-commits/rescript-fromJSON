@@ -1,14 +1,13 @@
 {
-  "name": "rescript-decode",
-  "displayName": "ReScript Decode",
+  "name": "rescript-FromJSON",
+  "displayName": "ReScript FromJSON",
   "description": "Precision JSON-to-Rescript type conversion for generating efficient decode functions in Visual Studio Code.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "icon": "res-dec-logo.png",
-  "author": "Dilan Bopanna",
-  "publisher": "dilanBopanna",
+  "publisher": "codeGenerator1234789",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dilanbopanna/rescript-decode-vscode.git"
+    "url": "https://github.com/enigma-commits/rescript-fromJSON"
   },
   "engines": {
     "vscode": "^1.73.0"

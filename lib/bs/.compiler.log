@@ -1,2 +1,28 @@
-#Start(1694687016486)
-#Done(1694687016486)
+#Start(1716458642935)
+
+  Warning number 3
+  /Users/akhilesh.b/Desktop/rescript-decode-vscode/src/decodeFunction.res:110:25-37
+
+  108 ┆ switch Js.Re.exec_( regex, Js.String2.trim(val)) {
+  109 ┆   | Some(match') =>
+  110 ┆     let match = Js.Re.matches(match')
+  111 ┆     let enumName = match[1]
+  112 ┆     let enumType = match[2]
+
+  deprecated: Js.Re.matches
+  Use Js.Re.captures instead
+
+
+  Warning number 3
+  /Users/akhilesh.b/Desktop/rescript-decode-vscode/src/decodeFunction.res:191:17-29
+
+  189 ┆ | Some(match') =>
+  190 ┆   Js.Console.log(`match`)
+  191 ┆   let match = Js.Re.matches(match')
+  192 ┆   let enumName = match[1]
+  193 ┆   let enumType = match[2]
+
+  deprecated: Js.Re.matches
+  Use Js.Re.captures instead
+
+#Done(1716458642985)
