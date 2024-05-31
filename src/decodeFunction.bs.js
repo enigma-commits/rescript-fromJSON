@@ -162,19 +162,19 @@ function getFunctionName(str) {
 function typeFunctionMapper(str, type_) {
   switch (str) {
     case "Js.Json.t" :
-        return "getJsonObjectFromDict(dict, \"" + type_ + "\")";
+        return "getOptionalJsonObjectFromDict(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "array<float>" :
-        return "getFloatArrayFromDict(dict, \"" + type_ + "\")";
+        return "getOptionFloatArrayFromDict(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "array<int>" :
-        return "getIntArrayFromDict(dict, \"" + type_ + "\", [])";
+        return "getOptionIntArrayFromDict(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "array<string>" :
-        return "getStrArrayFromDict(dict, \"" + type_ + "\", [])";
+        return "getOptionStrArrayFromDict(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "bool" :
-        return "getBool(dict, \"" + type_ + "\", false)";
+        return "getOptionBool(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "float" :
-        return "getFloat(dict, \"" + type_ + "\", 0.0)";
+        return "getOptionFloat(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "int" :
-        return "getInt(dict, \"" + type_ + "\", 0)";
+        return "getOptionInt(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "option<Js.Json.t>" :
         return "getOptionalJsonFromDict(dict, \"" + type_ + "\")";
     case "option<array<float>>" :
@@ -192,7 +192,7 @@ function typeFunctionMapper(str, type_) {
     case "option<string>" :
         return "getOptionString(dict, \"" + type_ + "\")";
     case "string" :
-        return "getString(dict, \"" + type_ + "\", \"\")";
+        return "getOptionString(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     default:
       return "||get" + replaceFirstLetterUpper(type_) + "(dict, \"" + type_ + "\")**" + str + "**||";
   }
@@ -201,19 +201,19 @@ function typeFunctionMapper(str, type_) {
 function typeFunctionMapperEnum(str, type_) {
   switch (str) {
     case "Js.Json.t" :
-        return "getJsonObjectFromDict(dict, \"" + type_ + "\")";
+        return "getOptionalJsonObjectFromDict(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "array<float>" :
-        return "getFloatArrayFromDict(dict, \"" + type_ + "\")";
+        return "getOptionFloatArrayFromDict(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "array<int>" :
-        return "getIntArrayFromDict(dict, \"" + type_ + "\", [])";
+        return "getOptionIntArrayFromDict(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "array<string>" :
-        return "getStrArrayFromDict(dict, \"" + type_ + "\", [])";
+        return "getOptionStrArrayFromDict(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "bool" :
-        return "getBool(dict, \"" + type_ + "\", false)";
+        return "getOptionBool(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "float" :
-        return "getFloat(dict, \"" + type_ + "\", 0.0)";
+        return "getOptionFloat(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "int" :
-        return "getInt(dict, \"" + type_ + "\", 0)";
+        return "getOptionInt(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     case "option<Js.Json.t>" :
         return "getOptionalJsonFromDict(dict, \"" + type_ + "\")";
     case "option<array<float>>" :
@@ -231,25 +231,23 @@ function typeFunctionMapperEnum(str, type_) {
     case "option<string>" :
         return "getOptionString(dict, \"" + type_ + "\")";
     case "string" :
-        return "getString(dict, \"" + type_ + "\", \"\")";
+        return "getOptionString(dict, \"" + type_ + "\") -> Belt.Option.getExn";
     default:
       return "||get" + replaceFirstLetterUpper(type_) + "Option(dict, \"" + type_ + "\")***" + str + "***||";
   }
 }
 
 function enumFunctionMapper(str) {
-  console.log("enumFunctionMapper " + str + "");
   var regex = /^([a-zA-Z_]\w*)\(([a-zA-Z_]\w*)\)$/;
   var match$p = regex.exec(str);
   if (match$p !== null) {
-    console.log("match");
     var enumName = Caml_array.get(match$p, 1);
     var enumType = Caml_array.get(match$p, 2);
     var enumDecode = typeFunctionMapperEnum(enumType, enumType);
     return "" + enumDecode + " -> Belt.Option.map(x => " + enumName + "(x))";
   }
   var caseBlock = "\t\t| \"" + str.trim() + "\" => Some(" + str + ")";
-  return "  switch str {\n" + caseBlock + "\n\t\t| _ => None\n    }";
+  return "  switch dict {\n" + caseBlock + "\n\t\t| _ => None\n    }";
 }
 
 function getFuntionStr(fnName, type_, convertedBlock, kind) {
@@ -258,38 +256,38 @@ function getFuntionStr(fnName, type_, convertedBlock, kind) {
   if (/^option<([a-zA-Z0-9]+)>/.test(type_) && kind === /* Normal */1) {
     return "" + getKeyStr + "\n  " + flatMapObjectDecodeStr + "\n  ->Belt.Option.map(dict => {\n" + convertedBlock + "\n  })\n}\n";
   } else if (/^option<([a-zA-Z0-9]+)>/.test(type_) && kind === /* Varient */0) {
-    return "" + getKeyStr + "\n  ->Belt.Option.flatMap(Js.Json.decodeString)\n  ->Belt.Option.map(str => {\n      \n" + convertedBlock + "\n  })\n}\n";
+    return "" + getKeyStr + "\n  ->Belt.Option.flatMap(Js.Json.decodeString)\n  ->Belt.Option.map(dict => {\n      \n" + convertedBlock + "\n  })\n}\n";
   } else if (/^array<([a-zA-Z0-9.]+)>/.test(type_)) {
     var optional = false;
-    return "" + getKeyStr + "\n   ->Belt.Option.flatMap(Js.Json.decodeArray)\n   ->Belt.Option.getWithDefault([])\n   ->Belt.Array.keepMap(Js.Json.decodeObject)\n   ->Js.Array2.map(dict => {\n       " + convertedBlock + "\n   })" + (
+    return "" + getKeyStr + "\n   ->Belt.Option.flatMap(Js.Json.decodeArray)\n   ->Belt.Option.getExn\n   ->Belt.Array.keepMap(Js.Json.decodeObject)\n   ->Js.Array2.map(dict => {\n       " + convertedBlock + "\n   })" + (
             optional ? "->Some" : ""
           ) + "\n}\n";
   } else if (/^option<array<([a-zA-Z0-9]+)>>/.test(type_)) {
-    return "let " + fnName + " = (dict, key) => {\n    switch dict->Js.Dict.get(key)->Belt.Option.flatMap(Js.Json.decodeArray) {\n  | Some(arr) =>\n    arr\n    " + flatMapObjectDecodeStr + "\n    ->Js.Array2.map(dict => {\n       " + convertedBlock + "\n    })\n    ->Some\n  | None => None\n   }\n}\n";
+    return "let " + fnName + " = (dict, key) => {\n    switch dict->Js.Dict.get(key)->Belt.Option.flatMap(Js.Json.decodeArray) {\n  | Some(arr) =>\n    arr -> Belt.Array.keepMap(Js.Json.decodeObject)\n    ->Js.Array2.map(dict => {\n       " + convertedBlock + "\n    })\n    ->Some\n  | None => None\n   }\n}\n";
   } else if (kind === /* Normal */1) {
-    return "" + getKeyStr + "\n  " + flatMapObjectDecodeStr + "\n  ->Belt.Option.map(dict => {\n     " + convertedBlock + "\n  })->Belt.Option.getWithDefault(default" + replaceFirstLetterUpper(type_) + ")\n}\n";
+    return "" + getKeyStr + "\n  " + flatMapObjectDecodeStr + "\n  ->Belt.Option.map(dict => {\n     " + convertedBlock + "\n  })->Belt.Option.getExn\n}\n";
   } else {
-    return "" + getKeyStr + "\n  ->Belt.Option.flatMap(Js.Json.decodeString)\n  ->Belt.Option.map(str => {\n      \n" + convertedBlock + "\n  })->Belt.Option.getWithDefault(default" + replaceFirstLetterUpper(type_) + ")\n}\n";
+    return "" + getKeyStr + "\n  ->Belt.Option.flatMap(Js.Json.decodeString)\n  ->Belt.Option.map(dict => {\n      \n" + convertedBlock + "\n  })->Belt.Option.getExn\n}\n";
   }
 }
 
 function getFuntionStrEnum(fnName, type_, convertedBlock, kind) {
-  var getKeyStr = "let " + fnName + " = (dict, _key) => {\n  Some(dict)";
+  var getKeyStr = "let " + fnName + " = (dict, _key) => {\n  dict \n  -> getDictfromJsonString";
   if (/^option<([a-zA-Z0-9]+)>/.test(type_) && kind === /* Normal */1) {
     return "" + getKeyStr + "\n  ->Belt.Option.map(dict => {\n" + convertedBlock + "\n  })\n}\n";
   } else if (/^option<([a-zA-Z0-9]+)>/.test(type_) && kind === /* Varient */0) {
     return "" + getKeyStr + "\n  ->Belt.Option.map(dict => {\n      \n" + convertedBlock + "\n  })\n}\n";
   } else if (/^array<([a-zA-Z0-9.]+)>/.test(type_)) {
     var optional = false;
-    return "" + getKeyStr + "\n   ->Belt.Option.getWithDefault([])\n   ->Belt.Array.keepMap(Js.Json.decodeObject)\n   ->Js.Array2.map(dict => {\n      " + convertedBlock + "\n   })" + (
+    return "" + getKeyStr + "\n   ->Belt.Option.getExn\n   ->Belt.Array.keepMap(Js.Json.decodeObject)\n   ->Js.Array2.map(dict => {\n      " + convertedBlock + "\n   })" + (
             optional ? "->Some" : ""
           ) + "\n}\n";
   } else if (/^option<array<([a-zA-Z0-9]+)>>/.test(type_)) {
     return "let " + fnName + " = (dict, key) => {\n    switch dict->Js.Dict.get(key)->Belt.Option.flatMap(Js.Json.decodeArray) {\n  | Some(arr) =>\n    arr\n    ->Belt.Option.flatMap(Js.Json.decodeObject)\n    ->Js.Array2.map(dict => {\n       " + convertedBlock + "\n    })\n    ->Some\n  | None => None\n   }\n}\n";
   } else if (kind === /* Normal */1) {
-    return "" + getKeyStr + "\n  ->Belt.Option.map(dict => {\n     " + convertedBlock + "\n  })->Belt.Option.getWithDefault(default" + replaceFirstLetterUpper(type_) + ") -> returnNonDefault(default" + replaceFirstLetterUpper(type_) + ")\n}\n";
+    return "" + getKeyStr + "\n  ->Belt.Option.map(dict => {\n     " + convertedBlock + "\n  })\n}\n";
   } else {
-    return "" + getKeyStr + "\n  ->Belt.Option.map(dict => {\n      \n" + convertedBlock + "\n  })->Belt.Option.getWithDefault(default" + replaceFirstLetterUpper(type_) + ") -> returnNonDefault(default" + replaceFirstLetterUpper(type_) + ")\n}\n";
+    return "" + getKeyStr + "\n  ->Belt.Option.map(dict => {\n      \n" + convertedBlock + "\n  })\n}\n";
   }
 }
 
@@ -349,9 +347,8 @@ function generateNestedObject(str, mainStr, allfiles) {
       var match$1 = Belt_Array.keepMap(match, (function (x) {
               return x;
             }));
-      var defaultValue = getDefaultValue(mainStr, Caml_array.get(match$1, 2), allfiles);
       var nestedObject = getObjectFunctionEnum(mainStr, Caml_array.get(match$1, 1), Caml_array.get(match$1, 2), allfiles);
-      someVal.contents = (defaultValue + "\n" + nestedObject + "\n" + someVal.contents).replace(Caml_array.get(match$1, 0), Caml_array.get(match$1, 1));
+      someVal.contents = (nestedObject + "\n" + someVal.contents).replace(Caml_array.get(match$1, 0), Caml_array.get(match$1, 1));
       _str = someVal.contents;
       continue ;
     }
@@ -362,9 +359,8 @@ function generateNestedObject(str, mainStr, allfiles) {
     var match$3 = Belt_Array.keepMap(match$2, (function (x) {
             return x;
           }));
-    var defaultValue$1 = getDefaultValue(mainStr, Caml_array.get(match$3, 2), allfiles);
     var nestedObject$1 = getObjectFunction(mainStr, Caml_array.get(match$3, 1), Caml_array.get(match$3, 2), allfiles);
-    someVal.contents = (defaultValue$1 + "\n" + nestedObject$1 + "\n" + someVal.contents).replace(Caml_array.get(match$3, 0), Caml_array.get(match$3, 1));
+    someVal.contents = (nestedObject$1 + "\n" + someVal.contents).replace(Caml_array.get(match$3, 0), Caml_array.get(match$3, 1));
     _str = someVal.contents;
     continue ;
   };
@@ -390,7 +386,7 @@ function generateDecode(type_, mainStr, allfiles) {
           }), "") + " -> Belt.Option.getExn";
     convertedBlock = "  None\n      \n" + caseBlock + "";
   }
-  var mapper = kind ? "let itemToObjectMapper = dict => {\n" + convertedBlock + "\n}\n " : "let get" + replaceFirstLetterUpper(type_) + " = str => {\n" + convertedBlock + "\n}\n ";
+  var mapper = kind ? "let decodeTo" + replaceFirstLetterUpper(type_) + " = dict => {\n        try {\nSome(" + convertedBlock + ")\n  }\n  catch {\n    | _ => None\n  }\n}\n " : "let decodeTo" + replaceFirstLetterUpper(type_) + " = dict => {\n      try{\nSome(" + convertedBlock + ")\n      }\n      catch {\n        | _ => None \n      }\n ";
   return generateNestedObject(mapper, mainStr, allfiles);
 }
 

@@ -1,4 +1,4 @@
-#Start(1716458642935)
+#Start(1717139405853)
 
   Warning number 3
   /Users/akhilesh.b/Desktop/rescript-decode-vscode/src/decodeFunction.res:110:25-37
@@ -14,15 +14,15 @@
 
 
   Warning number 3
-  /Users/akhilesh.b/Desktop/rescript-decode-vscode/src/decodeFunction.res:191:17-29
+  /Users/akhilesh.b/Desktop/rescript-decode-vscode/src/decodeFunction.res:189:17-29
 
-  189 ┆ | Some(match') =>
-  190 ┆   Js.Console.log(`match`)
-  191 ┆   let match = Js.Re.matches(match')
-  192 ┆   let enumName = match[1]
-  193 ┆   let enumType = match[2]
+  187 ┆ switch Js.Re.exec_( regex, str) {
+  188 ┆ | Some(match') =>
+  189 ┆   let match = Js.Re.matches(match')
+  190 ┆   let enumName = match[1]
+  191 ┆   let enumType = match[2]
 
   deprecated: Js.Re.matches
   Use Js.Re.captures instead
 
-#Done(1716458642985)
+#Done(1717139405889)

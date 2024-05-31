@@ -140,19 +140,19 @@ let getFunctionName = str => {
 
 let typeFunctionMapper = (str, type_) => {
   switch str {
-  | "string" => `getString(dict, "${type_}", "")`
-  | "int" => `getInt(dict, "${type_}", 0)`
-  | "float" => `getFloat(dict, "${type_}", 0.0)`
-  | "bool" => `getBool(dict, "${type_}", false)`
+  | "string" => `getOptionString(dict, "${type_}") -> Belt.Option.getExn`
+  | "int" => `getOptionInt(dict, "${type_}") -> Belt.Option.getExn`
+  | "float" => `getOptionFloat(dict, "${type_}") -> Belt.Option.getExn`
+  | "bool" => `getOptionBool(dict, "${type_}") -> Belt.Option.getExn`
   | "option<float>" => `getOptionFloat(dict, "${type_}")`
   | "option<string>" => `getOptionString(dict, "${type_}")`
   | "option<int>" => `getOptionInt(dict, "${type_}")`
   | "option<bool>" => `getOptionBool(dict, "${type_}")`
-  | "array<float>" => `getFloatArrayFromDict(dict, "${type_}")`
+  | "array<float>" => `getOptionFloatArrayFromDict(dict, "${type_}") -> Belt.Option.getExn`
   | "option<Js.Json.t>" => `getOptionalJsonFromDict(dict, "${type_}")`
-  | "Js.Json.t" => `getJsonObjectFromDict(dict, "${type_}")`
-  | "array<string>" => `getStrArrayFromDict(dict, "${type_}", [])`
-  | "array<int>" => `getIntArrayFromDict(dict, "${type_}", [])`
+  | "Js.Json.t" => `getOptionalJsonObjectFromDict(dict, "${type_}") -> Belt.Option.getExn`
+  | "array<string>" => `getOptionStrArrayFromDict(dict, "${type_}") -> Belt.Option.getExn`
+  | "array<int>" => `getOptionIntArrayFromDict(dict, "${type_}") -> Belt.Option.getExn`
   | "option<array<float>>" => `getOptionFloatArrayFromDict(dict, "${type_}")`
   | "option<array<string>>" => `getOptionStrArrayFromDict(dict, "${type_}")`
   | "option<array<int>>" => `getOptionIntArrayFromDict(dict, "${type_}")`
@@ -162,19 +162,19 @@ let typeFunctionMapper = (str, type_) => {
 
 let typeFunctionMapperEnum = (str, type_) => {
   switch str {
-  | "string" => `getString(dict, "${type_}", "")`
-  | "int" => `getInt(dict, "${type_}", 0)`
-  | "float" => `getFloat(dict, "${type_}", 0.0)`
-  | "bool" => `getBool(dict, "${type_}", false)`
+  | "string" => `getOptionString(dict, "${type_}") -> Belt.Option.getExn`
+  | "int" => `getOptionInt(dict, "${type_}") -> Belt.Option.getExn`
+  | "float" => `getOptionFloat(dict, "${type_}") -> Belt.Option.getExn`
+  | "bool" => `getOptionBool(dict, "${type_}") -> Belt.Option.getExn`
   | "option<float>" => `getOptionFloat(dict, "${type_}")`
   | "option<string>" => `getOptionString(dict, "${type_}")`
   | "option<int>" => `getOptionInt(dict, "${type_}")`
   | "option<bool>" => `getOptionBool(dict, "${type_}")`
-  | "array<float>" => `getFloatArrayFromDict(dict, "${type_}")`
+  | "array<float>" => `getOptionFloatArrayFromDict(dict, "${type_}") -> Belt.Option.getExn`
   | "option<Js.Json.t>" => `getOptionalJsonFromDict(dict, "${type_}")`
-  | "Js.Json.t" => `getJsonObjectFromDict(dict, "${type_}")`
-  | "array<string>" => `getStrArrayFromDict(dict, "${type_}", [])`
-  | "array<int>" => `getIntArrayFromDict(dict, "${type_}", [])`
+  | "Js.Json.t" => `getOptionalJsonObjectFromDict(dict, "${type_}") -> Belt.Option.getExn`
+  | "array<string>" => `getOptionStrArrayFromDict(dict, "${type_}") -> Belt.Option.getExn`
+  | "array<int>" => `getOptionIntArrayFromDict(dict, "${type_}") -> Belt.Option.getExn`
   | "option<array<float>>" => `getOptionFloatArrayFromDict(dict, "${type_}")`
   | "option<array<string>>" => `getOptionStrArrayFromDict(dict, "${type_}")`
   | "option<array<int>>" => `getOptionIntArrayFromDict(dict, "${type_}")`
@@ -183,11 +183,9 @@ let typeFunctionMapperEnum = (str, type_) => {
 }
 
 let enumFunctionMapper = (str) => {
-  Js.Console.log(`enumFunctionMapper ${str}`)
   let regex = %re("/^([a-zA-Z_]\w*)\(([a-zA-Z_]\w*)\)$/")
   switch Js.Re.exec_( regex, str) {
   | Some(match') =>
-    Js.Console.log(`match`)
     let match = Js.Re.matches(match')
     let enumName = match[1]
     let enumType = match[2]
@@ -195,7 +193,7 @@ let enumFunctionMapper = (str) => {
     `${enumDecode} -> Belt.Option.map(x => ${enumName}(x))`
   | None => 
     let caseBlock = `\t\t| "${Js.String2.trim(str)}" => Some(${str})`
-      `  switch str {
+      `  switch dict {
 ${caseBlock}
 \t\t| _ => None
     }`
@@ -210,7 +208,7 @@ let getFuntionStr = (fnName, type_, convertedBlock, kind) => {
   let arrayOfObjuectStr = (~optional) => {
     `${getKeyStr}
    ->Belt.Option.flatMap(Js.Json.decodeArray)
-   ->Belt.Option.getWithDefault([])
+   ->Belt.Option.getExn
    ->Belt.Array.keepMap(Js.Json.decodeObject)
    ->Js.Array2.map(dict => {
        ${convertedBlock}
@@ -228,7 +226,7 @@ ${convertedBlock}
   } else if Js.Re.test_(%re("/^option<([a-zA-Z0-9]+)>/"), type_) && kind == Varient {
     `${getKeyStr}
   ->Belt.Option.flatMap(Js.Json.decodeString)
-  ->Belt.Option.map(str => {
+  ->Belt.Option.map(dict => {
       \n${convertedBlock}
   })
 }\n`
@@ -238,8 +236,7 @@ ${convertedBlock}
     `let ${fnName} = (dict, key) => {
     switch dict->Js.Dict.get(key)->Belt.Option.flatMap(Js.Json.decodeArray) {
   | Some(arr) =>
-    arr
-    ${flatMapObjectDecodeStr}
+    arr -> Belt.Array.keepMap(Js.Json.decodeObject)
     ->Js.Array2.map(dict => {
        ${convertedBlock}
     })
@@ -252,26 +249,27 @@ ${convertedBlock}
   ${flatMapObjectDecodeStr}
   ->Belt.Option.map(dict => {
      ${convertedBlock}
-  })->Belt.Option.getWithDefault(default${type_->replaceFirstLetterUpper})
+  })->Belt.Option.getExn
 }\n`
   } else {
     `${getKeyStr}
   ->Belt.Option.flatMap(Js.Json.decodeString)
-  ->Belt.Option.map(str => {
+  ->Belt.Option.map(dict => {
       \n${convertedBlock}
-  })->Belt.Option.getWithDefault(default${type_->replaceFirstLetterUpper})
+  })->Belt.Option.getExn
 }\n`
   }
 }
 
 let getFuntionStrEnum = (fnName, type_, convertedBlock, kind) => {
   let getKeyStr = `let ${fnName} = (dict, _key) => {
-  Some(dict)`
+  dict 
+  -> getDictfromJsonString`
   let flatMapObjectDecodeStr = `->Belt.Option.flatMap(Js.Json.decodeObject)`
 
   let arrayOfObjuectStr = (~optional) => {
     `${getKeyStr}
-   ->Belt.Option.getWithDefault([])
+   ->Belt.Option.getExn
    ->Belt.Array.keepMap(Js.Json.decodeObject)
    ->Js.Array2.map(dict => {
       ${convertedBlock}
@@ -310,13 +308,13 @@ ${convertedBlock}
     `${getKeyStr}
   ->Belt.Option.map(dict => {
      ${convertedBlock}
-  })->Belt.Option.getWithDefault(default${type_->replaceFirstLetterUpper}) -> returnNonDefault(default${type_->replaceFirstLetterUpper})
+  })
 }\n`
   } else {
     `${getKeyStr}
   ->Belt.Option.map(dict => {
       \n${convertedBlock}
-  })->Belt.Option.getWithDefault(default${type_->replaceFirstLetterUpper}) -> returnNonDefault(default${type_->replaceFirstLetterUpper})
+  })
 }\n`
   }
 }
@@ -387,11 +385,10 @@ let generateNestedObject = (str, mainStr, allfiles) => {
     switch str->Js.String2.match_(%re("/\|\|(.*?)\*\*\*(.*?)\*\*\*\|\|/")) {
     | Some(match) =>
       let match = match->Belt.Array.keepMap(x => x)
-      let defaultValue = mainStr->getDefaultValue(match[2], allfiles)
       let nestedObject = mainStr->getObjectFunctionEnum(match[1], match[2], allfiles)
 
       someVal :=
-          (defaultValue ++ "\n" ++ nestedObject ++ "\n" ++ someVal.contents)
+          (nestedObject ++ "\n" ++ someVal.contents)
             ->Js.String2.replace(match[0], match[1])
 
       fn(someVal.contents)
@@ -401,11 +398,10 @@ let generateNestedObject = (str, mainStr, allfiles) => {
       
         let match = match->Belt.Array.keepMap(x => x)
 
-        let defaultValue = mainStr->getDefaultValue(match[2], allfiles)
         let nestedObject = mainStr->getObjectFunction(match[1], match[2], allfiles)
 
         someVal :=
-          (defaultValue ++ "\n" ++ nestedObject ++ "\n" ++ someVal.contents)
+          (nestedObject ++ "\n" ++ someVal.contents)
             ->Js.String2.replace(match[0], match[1])
 
         fn(someVal.contents)
@@ -451,14 +447,23 @@ let generateDecode = (type_, mainStr, allfiles) => {
 
   let mapper = switch kind {
   | Normal =>
-    `let itemToObjectMapper = dict => {
-${convertedBlock}
+    `let decodeTo${type_->replaceFirstLetterUpper} = dict => {
+        try {
+Some(${convertedBlock})
+  }
+  catch {
+    | _ => None
+  }
 }
  `
   | Varient =>
-    `let get${type_->replaceFirstLetterUpper} = str => {
-${convertedBlock}
-}
+    `let decodeTo${type_->replaceFirstLetterUpper} = dict => {
+      try{
+Some(${convertedBlock})
+      }
+      catch {
+        | _ => None 
+      }
  `
   }
 

@@ -2,7 +2,7 @@
   "name": "rescript-FromJSON",
   "displayName": "ReScript FromJSON",
   "description": "Precision JSON-to-Rescript type conversion for generating efficient decode functions in Visual Studio Code.",
-  "version": "1.0.3",
+  "version": "1.0.6",
   "icon": "res-dec-logo.png",
   "publisher": "codeGenerator1234789",
   "repository": {
@@ -24,12 +24,21 @@
       {
         "title": "Rescript Decode",
         "command": "rescript-decode.enableDecodeButton",
-        "category": ""
+        "category": "ReScript FromJSON"
+      },
+      {
+        "title": "Rescript Encode",
+        "command": "rescript-decode.enableEncodeButton",
+        "category": "ReScript FromJSON"
       }
     ],
     "configuration": {
       "properties": {
         "rescript-decode.enableDecodeButton": {
+          "type": "boolean",
+          "default": true
+        },
+        "rescript-decode.enableEncodeButton": {
           "type": "boolean",
           "default": true
         }

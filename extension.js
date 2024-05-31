@@ -5,11 +5,13 @@ const ignore = require('ignore');
 const { languages, commands, workspace } = vscode;
 
 const decodeFunction = require("./src/decodeFunction.bs");
+const encodeFunction = require("./src/encodeFunction");
 
 class CodelensProvider {
   constructor() {
     this.codeLenses = [];
-    this.regex = /type\s+(\w+)\s+=\s+\{/g;
+    this.regexDecode = /type\s+(\w+)\s+=\s+\{/g;
+    this.regexEncode = /type\s+(\w+)\s+/g;
 
     this._onDidChangeCodeLenses = new vscode.EventEmitter();
     this.onDidChangeCodeLenses = this._onDidChangeCodeLenses.event;
@@ -20,50 +22,140 @@ class CodelensProvider {
   }
 
   provideCodeLenses(document, token) {
-    if (
-      vscode.workspace
-        .getConfiguration("rescript-decode")
-        .get("enableDecodeButton", true)
-    ) {
+    const enableDecodeButton = vscode.workspace
+      .getConfiguration("rescript-decode")
+      .get("enableDecodeButton", true);
+    const enableEncodeButton = vscode.workspace
+      .getConfiguration("rescript-decode")
+      .get("enableEncodeButton", true);
+    const enableEncodeDecodeButton = vscode.workspace
+      .getConfiguration("rescript-decode")
+      .get("enableEncodeDecodeButton", true);
+
+    if (enableDecodeButton || enableEncodeButton || enableEncodeDecodeButton) {
       this.codeLenses = [];
-      const regex = new RegExp(this.regex);
       const text = document.getText();
 
-      let matches;
-      while ((matches = regex.exec(text)) !== null) {
-        const line = document.lineAt(document.positionAt(matches.index).line);
-        const indexOf = line.text.indexOf(matches[0]);
-        const position = new vscode.Position(line.lineNumber, indexOf);
-        const range = document.getWordRangeAtPosition(
-          position,
-          new RegExp(this.regex)
-        );
-        if (range) {
-          this.codeLenses.push(new vscode.CodeLens(range));
+      if (enableDecodeButton) {
+        let matchesDecode;
+        const regexDecode = new RegExp(this.regexDecode);
+        while ((matchesDecode = regexDecode.exec(text)) !== null) {
+          const line = document.lineAt(document.positionAt(matchesDecode.index).line);
+          const indexOf = line.text.indexOf(matchesDecode[0]);
+          const position = new vscode.Position(line.lineNumber, indexOf);
+          const range = document.getWordRangeAtPosition(
+            position,
+            new RegExp(this.regexDecode)
+          );
+          if (range) {
+            this.codeLenses.push(
+              new vscode.CodeLens(range, {
+                title: "Generate Decode",
+                tooltip: "Click to generate decode function",
+                command: "rescript-decode.generateDecode",
+                arguments: [line.text],
+              })
+            );
+          }
         }
       }
+
+      if (enableEncodeButton) {
+        let matchesEncode;
+        const regexEncode = new RegExp(this.regexEncode);
+        while ((matchesEncode = regexEncode.exec(text)) !== null) {
+          const line = document.lineAt(document.positionAt(matchesEncode.index).line);
+          const indexOf = line.text.indexOf(matchesEncode[0]);
+          const position = new vscode.Position(line.lineNumber, indexOf);
+          const range = document.getWordRangeAtPosition(
+            position,
+            new RegExp(this.regexEncode)
+          );
+          if (range) {
+            this.codeLenses.push(
+              new vscode.CodeLens(range, {
+                title: "Generate Encode",
+                tooltip: "Click to generate encode function",
+                command: "rescript-decode.generateEncode",
+                arguments: [line.text],
+              })
+            );
+          }
+        }
+      }
+
+      if (enableEncodeDecodeButton) {
+        let matchesEncodeDecode;
+        const regexEncodeDecode = new RegExp(this.regexEncode);
+        while ((matchesEncodeDecode = regexEncodeDecode.exec(text)) !== null) {
+          const line = document.lineAt(document.positionAt(matchesEncodeDecode.index).line);
+          const indexOf = line.text.indexOf(matchesEncodeDecode[0]);
+          const position = new vscode.Position(line.lineNumber, indexOf);
+          const range = document.getWordRangeAtPosition(
+            position,
+            new RegExp(this.regexEncode)
+          );
+          if (range) {
+            this.codeLenses.push(
+              new vscode.CodeLens(range, {
+                title: "Generate Encode & Decode",
+                tooltip: "Click to generate encode and decode functions",
+                command: "rescript-decode.generateEncodeDecode",
+                arguments: [line.text],
+              })
+            );
+          }
+        }
+      }
+
       return this.codeLenses;
     }
     return [];
   }
 
   resolveCodeLens(codeLens, token) {
+    const document = vscode.window.activeTextEditor.document;
+    const currentLine = document.lineAt(codeLens.range.start.line).text;
+
     if (
       vscode.workspace
         .getConfiguration("rescript-decode")
-        .get("enableDecodeButton", true)
+        .get("enableDecodeButton", true) &&
+      codeLens.command.command === "rescript-decode.generateDecode"
     ) {
-      const document = vscode.window.activeTextEditor.document;
-      const currentLine = document.lineAt(codeLens.range.start.line).text;
       codeLens.command = {
         title: "Generate Decode",
         tooltip: "Click to generate decode function",
         command: "rescript-decode.generateDecode",
         arguments: [currentLine, false],
       };
-      return codeLens;
+    } else if (
+      vscode.workspace
+        .getConfiguration("rescript-decode")
+        .get("enableEncodeButton", true) &&
+      codeLens.command.command === "rescript-decode.generateEncode"
+    ) {
+      codeLens.command = {
+        title: "Generate Encode",
+        tooltip: "Click to generate encode function",
+        command: "rescript-decode.generateEncode",
+        arguments: [currentLine, false],
+      };
+    } else if (
+      vscode.workspace
+        .getConfiguration("rescript-decode")
+        .get("enableEncodeDecodeButton", true) &&
+      codeLens.command.command === "rescript-decode.generateEncodeDecode"
+    ) {
+      codeLens.command = {
+        title: "Generate Encode & Decode",
+        tooltip: "Click to generate encode and decode functions",
+        command: "rescript-decode.generateEncodeDecode",
+        arguments: [currentLine, false],
+      };
     }
-    return null;
+
+    return codeLens;
   }
 }
 
@@ -127,8 +219,19 @@ function activate(context) {
       .update("enableDecodeButton", true, true);
   });
 
-  commands.registerCommand("rescript-decode.generateDecode", (args) => {
-    console.log("initial came here");
+  commands.registerCommand("rescript-decode.enableEncodeButton", () => {
+    workspace
+      .getConfiguration("rescript-decode")
+      .update("enableEncodeButton", true, true);
+  });
+
+  commands.registerCommand("rescript-decode.enableEncodeDecodeButton", () => {
+    workspace
+      .getConfiguration("rescript-decode")
+      .update("enableEncodeDecodeButton", true, true);
+  });
+
+  commands.registerCommand("rescript-decode.generateEncode", (args) => {
     const regex = /type\s+(\w+)\s+=/; // Regular expression to match the type name
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -139,16 +242,58 @@ function activate(context) {
     if (match) {
       const typeName = match[1];
       const fileContents = editor.document.getText();
-      console.log("before generation came here");
-      let result = decodeFunction.generateDecode(typeName, fileContents, files);
-      console.log("after generation came here")
-      let res = `open LogicUtils // Import Utilities from your Utils file
-        ${result}
-        `;
-      console.log("after generation came here");
+      let result = encodeFunction.generateEncode(typeName, fileContents, files);
+      let res = `${result}`;
       vscode.env.clipboard.writeText(res).then(() => {
         vscode.window.showInformationMessage(
           `${typeName} : Generated code copied to clipboard.`
+        );
+      });
+    } else {
+      vscode.window.showErrorMessage("No Type Found");
+    }
+  });
+
+  commands.registerCommand("rescript-decode.generateDecode", (args) => {
+    const regex = /type\s+(\w+)\s+=/; // Regular expression to match the type name
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage("No active editor found.");
+      return;
+    }
+    const match = args.match(regex);
+    if (match) {
+      const typeName = match[1];
+      const fileContents = editor.document.getText();
+      let result = decodeFunction.generateDecode(typeName, fileContents, files);
+      let res = `${result}`;
+      vscode.env.clipboard.writeText(res).then(() => {
+        vscode.window.showInformationMessage(
+          `${typeName} : Generated code copied to clipboard.`
+        );
+      });
+    } else {
+      vscode.window.showErrorMessage("No Type Found");
+    }
+  });
+
+  commands.registerCommand("rescript-decode.generateEncodeDecode", (args) => {
+    const regex = /type\s+(\w+)\s+=/; // Regular expression to match the type name
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage("No active editor found.");
+      return;
+    }
+    const match = args.match(regex);
+    if (match) {
+      const typeName = match[1];
+      const fileContents = editor.document.getText();
+      let decodeResult = decodeFunction.generateDecode(typeName, fileContents, files);
+      let encodeResult = encodeFunction.generateEncode(typeName, fileContents, files);
+      let res = `${decodeResult}\n${encodeResult}`;
+      vscode.env.clipboard.writeText(res).then(() => {
+        vscode.window.showInformationMessage(
+          `${typeName} : Generated encode and decode code copied to clipboard.`
         );
       });
     } else {
